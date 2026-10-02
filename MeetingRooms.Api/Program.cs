@@ -10,7 +10,10 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("Default"),
+        // Azure SQL (serverless) auto-pauses when idle; retry transient errors while it resumes.
+        sql => sql.EnableRetryOnFailure()));
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<IdentityUser>()
