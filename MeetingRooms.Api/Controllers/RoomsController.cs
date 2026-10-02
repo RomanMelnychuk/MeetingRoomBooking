@@ -1,10 +1,12 @@
 ﻿using System.Security.Claims;
 using MeetingRooms.Api.Data;
 using MeetingRooms.Api.Dtos;
+using MeetingRooms.Api.Hubs;
 using MeetingRooms.Api.Models;
 using MeetingRooms.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MeetingRooms.Api.Controllers;
@@ -12,7 +14,8 @@ namespace MeetingRooms.Api.Controllers;
 [ApiController]
 [Route("api/rooms")]
 [Authorize] // any logged-in user can view rooms and schedules
-public class RoomsController(AppDbContext db, BookingService bookings) : ControllerBase
+public class RoomsController(AppDbContext db, BookingService bookings, IHubContext<ScheduleHub> hub)
+    : ControllerBase
 {
     [HttpGet]
     public async Task<List<RoomDto>> GetAll() =>
@@ -35,6 +38,7 @@ public class RoomsController(AppDbContext db, BookingService bookings) : Control
         var room = new Room { Name = request.Name, Capacity = request.Capacity };
         db.Rooms.Add(room);
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("RoomsChanged");
         return Created($"/api/rooms/{room.Id}", new RoomDto(room.Id, room.Name, room.Capacity));
     }
 
@@ -47,6 +51,7 @@ public class RoomsController(AppDbContext db, BookingService bookings) : Control
         room.Name = request.Name;
         room.Capacity = request.Capacity;
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("RoomsChanged");
         return NoContent();
     }
 
@@ -58,6 +63,7 @@ public class RoomsController(AppDbContext db, BookingService bookings) : Control
 
         db.Rooms.Remove(room); // the room's bookings are removed by cascade delete
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("RoomsChanged");
         return NoContent();
     }
 }

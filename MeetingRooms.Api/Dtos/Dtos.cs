@@ -15,3 +15,5 @@ public record CreateBookingRequest(int RoomId, DateOnly Date, int StartHour);
 public record BookingDto(int Id, string RoomName, DateOnly Date, int StartHour, string UserEmail, DateTime CreatedAtUtc);
 
 public record MeDto(string Email, bool IsAdmin);
+
+public record SlotBookedEvent(int RoomId, DateOnly Date, int StartHour);

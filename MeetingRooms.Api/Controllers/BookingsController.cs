@@ -1,9 +1,11 @@
 ﻿using System.Security.Claims;
 using MeetingRooms.Api.Data;
 using MeetingRooms.Api.Dtos;
+using MeetingRooms.Api.Hubs;
 using MeetingRooms.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MeetingRooms.Api.Controllers;
@@ -11,13 +13,21 @@ namespace MeetingRooms.Api.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Authorize]
-public class BookingsController(AppDbContext db, BookingService bookings) : ControllerBase
+public class BookingsController(AppDbContext db, BookingService bookings, IHubContext<ScheduleHub> hub)
+    : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(CreateBookingRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var result = await bookings.BookAsync(request.RoomId, request.Date, request.StartHour, userId);
+
+        if (result == BookingResult.Success)
+        {
+            // Signal only: viewers of this room re-read the schedule through REST.
+            await hub.Clients.Group(ScheduleHub.RoomGroup(request.RoomId))
+                .SendAsync("SlotBooked", new SlotBookedEvent(request.RoomId, request.Date, request.StartHour));
+        }
 
         // Every outcome maps to a clear status code: the loser of a race gets 409, never 500.
         return result switch
