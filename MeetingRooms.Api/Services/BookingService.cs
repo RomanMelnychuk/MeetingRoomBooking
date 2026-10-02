@@ -1,4 +1,5 @@
 ﻿using MeetingRooms.Api.Data;
+using MeetingRooms.Api.Dtos;
 using MeetingRooms.Api.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,26 @@ public class BookingService(AppDbContext db)
         {
             return BookingResult.SlotTaken;
         }
+    }
+
+    /// <summary>Returns every fixed slot of the day with its status, or null if the room doesn't exist.</summary>
+    public async Task<List<SlotDto>?> GetScheduleAsync(int roomId, DateOnly date, string userId)
+    {
+        if (!await db.Rooms.AnyAsync(r => r.Id == roomId))
+            return null;
+
+        var booked = await db.Bookings
+            .Where(b => b.RoomId == roomId && b.Date == date)
+            .Select(b => new { b.StartHour, b.UserId })
+            .ToListAsync();
+
+        return Enumerable.Range(TimeSlots.FirstHour, TimeSlots.LastHour - TimeSlots.FirstHour + 1)
+            .Select(hour =>
+            {
+                var booking = booked.FirstOrDefault(b => b.StartHour == hour);
+                return new SlotDto(hour, booking is not null, booking?.UserId == userId);
+            })
+            .ToList();
     }
 
     // SQL Server: 2601 = duplicate key in unique index, 2627 = unique constraint violation.

@@ -1,6 +1,27 @@
-@MeetingRooms.Api_HostAddress = http://localhost:5130
+@host = https://localhost:7185
+@date = 2026-10-07
 
-GET {{MeetingRooms.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@test.com", "password": "Admin123!" }
 
 ###
+GET {{host}}/api/rooms
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+###
+GET {{host}}/api/rooms/1/schedule?date={{date}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/bookings
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roomId": 1, "date": "{{date}}", "startHour": 10 }
+
+###
+GET {{host}}/api/bookings
+Authorization: Bearer {{login.response.body.$.accessToken}}
